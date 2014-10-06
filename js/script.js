@@ -4,6 +4,7 @@
   エリア(ごみ処理の地域）を管理するクラスです。
 */
 var AreaModel = function() {
+  this.mastercode;
   this.label;
   this.centerName;
   this.center;
@@ -278,10 +279,20 @@ var TargetRowModel = function(data) {
  * ゴミ収集日に関する備考を管理するクラスです。
  * remarks.csvのモデルです。
  */
-var RemarkModel = function(data) {
-  this.id = data[0];
-  this.text = data[1];
+var RemarkModel = function() {
+  this.id;
+  this.text;
 }
+
+/**
+  エリアマスターを管理するクラスです。
+  area_master.csvのモデルです。
+*/
+var AreaMasterModel = function() {
+  this.mastercode;
+  this.name;
+}
+
 
 /* var windowHeight; */
 
@@ -292,15 +303,35 @@ $(function() {
   var descriptions = new Array();
   var areaModels = new Array();
   var remarks = new Array();
+  var areaMasterModels  = new Array();
 /*   var descriptions = new Array(); */
 
 
+  // ローカルストレージ（エリア名）
   function getSelectedAreaName() {
     return localStorage.getItem("selected_area_name");
   }
 
   function setSelectedAreaName(name) {
     localStorage.setItem("selected_area_name", name);
+  }
+
+  // ローカルストレージ（エリアマスター名）
+  function getSelectedAreaMasterName() {
+    return localStorage.getItem("selected_area_master_name");
+  }
+
+  function setSelectedAreaMasterName(name) {
+    localStorage.setItem("selected_area_master_name", name);
+  }
+
+  // ローカルストレージ（エリアマスター名）
+  function getSelectedAreaMasterNameBefore() {
+    return localStorage.getItem("selected_area_master_name_before");
+  }
+
+  function setSelectedAreaMasterNameBefore(name) {
+    localStorage.setItem("selected_area_master_name_before", name);
   }
 
   function csvToArray(filename, cb) {
@@ -323,21 +354,63 @@ $(function() {
     });
   }
 
-  function updateAreaList() {
+
+  function masterAreaList() {
+    // ★エリアのマスターリストを読み込みます
+    // 大阪府仕様。大阪府下の区一覧です
+    csvToArray("data/area_master.csv", function(tmp) {
+      var area_master_label = tmp.shift();    // ラベル
+      for (var i in tmp) {
+        var row           = tmp[i];
+        var area_master   = new AreaMasterModel();
+        area_master.mastercode    = row[0];
+        area_master.name  = row[1];
+        areaMasterModels.push(area_master);
+      }
+
+      // ListメニューのHTMLを作成
+      var selected_master_name = getSelectedAreaMasterName();
+      var area_master_select_form = $("#select_area_master");
+      var select_master_html = "";
+      select_master_html += '<option value="-1">地域を選択してください</option>';
+      for (var row_index in areaMasterModels) {
+        var area_master_name = areaMasterModels[row_index].name;
+        var selected = (selected_master_name == area_master_name) ? 'selected="selected"' : "";
+
+        select_master_html += '<option value="' + row_index + '" ' + selected + " >" + area_master_name + "</option>";
+      }
+
+      //デバッグ用
+      if (typeof dump == "function") {
+        dump(areaMasterModels);
+      }
+      //HTMLへの適応
+      area_master_select_form.html(select_master_html);
+      area_master_select_form.change();
+    });
+  }
+
+
+  function updateAreaList(mastercode) {
+    // 大阪府仕様。区のコード(mastercode)が引数です
     csvToArray("data/area_days.csv", function(tmp) {
       var area_days_label = tmp.shift();
       for (var i in tmp) {
         var row = tmp[i];
         var area = new AreaModel();
-        area.label = row[0];
-        area.centerName = row[1];
+        area.mastercode = row[0];
+        area.label = row[1];
+        area.centerName = row[2];
 
-        areaModels.push(area);
-        //２列目以降の処理
-        for (var r = 2; r < 2 + MaxDescription; r++) {
-          if (area_days_label[r]) {
-            var trash = new TrashModel(area_days_label[r], row[r], remarks);
-            area.trash.push(trash);
+        // 区コードが一致した場合のみデータ格納
+        if(area.mastercode == mastercode){
+          areaModels.push(area);
+          //２列目以降の処理
+          for (var r = 3; r < 3 + MaxDescription; r++) {
+            if (area_days_label[r]) {
+              var trash = new TrashModel(area_days_label[r], row[r], remarks);
+              area.trash.push(trash);
+            }
           }
         }
       }
@@ -432,10 +505,10 @@ $(function() {
     areaModel.calcMostRect();
     //トラッシュの近い順にソートします。
     areaModel.sortTrash();
-    var accordion_height = $(window).height() / descriptions.length;
+    var accordion_height = window.innerHeight / descriptions.length;
     if(descriptions.length>4){
-      accordion_height = accordion_height / 4.1;
-      if (accordion_height>140) {accordion_height = accordion_height / descriptions.length;};
+      accordion_height = window.innerHeight / 4.1;
+      if (accordion_height>140) {accordion_height = window.innerHeight / descriptions.length;};
       if (accordion_height<130) {accordion_height=130;};
     }
     var styleHTML = "";
@@ -449,7 +522,6 @@ $(function() {
        if (description.label != trash.label) {
           continue;
         }
-
           var target_tag = "";
           var furigana = "";
           var target_tag = "";
@@ -513,7 +585,6 @@ $(function() {
             "</div>";
       }
     }
-
     $("#accordion-style").html('<!-- ' + styleHTML + ' -->');
 
     var accordion_elm = $("#accordion");
@@ -546,7 +617,6 @@ $(function() {
     setSelectedAreaName(areaModels[row_index].label);
 
     if ($("#accordion").children().length === 0 && descriptions.length === 0) {
-
       createMenuList(function() {
         updateData(row_index);
       });
@@ -555,6 +625,34 @@ $(function() {
     }
   }
 
+  // ★マスターの変更時
+  function onChangeSelectMaster(row_index) {　
+    if (row_index == -1) {
+      // 初期化
+      $("#accordion").html("");
+      $("#select_area").html('<option value="-1">地域を選択してください</option>');
+      setSelectedAreaMasterName("");
+      return;
+    }
+
+    var checkAreaMasterName = getSelectedAreaMasterName();
+    var checkAreaMasterNameBefore = getSelectedAreaMasterNameBefore();
+
+    if(checkAreaMasterName == checkAreaMasterNameBefore){
+    }else{
+      $("#accordion").html("");
+      $("#select_area").html('<option value="-1">地域を選択してください</option>');
+      setSelectedAreaName("");
+    }
+
+    areaModels.length = 0;
+
+    setSelectedAreaMasterName(areaMasterModels[row_index].name);
+    setSelectedAreaMasterNameBefore(areaMasterModels[row_index].name);
+
+    updateAreaList(areaMasterModels[row_index].mastercode);
+
+  }
 
 
   function getAreaIndex(area_name) {
@@ -565,6 +663,15 @@ $(function() {
     }
     return -1;
   }
+
+  // リストマスターが選択されたら
+  $("#select_area_master").change(function(data) {
+    var row_index = $(data.target).val();
+    //onChangeSelect(row_index);
+    // ★ここでselect area変更用の読み込み処理
+    onChangeSelectMaster(row_index);
+  });
+
   //リストが選択されたら
   $("#select_area").change(function(data) {
     var row_index = $(data.target).val();
@@ -617,5 +724,8 @@ $(function() {
         return "An unknown error occurred."
     }
   }
-  updateAreaList();
+
+  masterAreaList();
+  //updateAreaList();
+
 });
