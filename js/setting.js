@@ -9,4 +9,4 @@ var MaxDescription = 9; // ごみの最大種類、９を超えない場合は�
 
 var MaxMonth = 8; // 何ヶ月先まで計算するかを指定します。
 
-var WeekShift = false; // 休止期間なら週をずらすときは、true。金沢の仕様は、true。
+var WeekShift = true; // 休止期間なら週をずらすときは、true。金沢の仕様は、true。
