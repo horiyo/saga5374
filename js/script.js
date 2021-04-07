@@ -45,6 +45,8 @@ var AreaModel = function() {
 */
   this.sortTrash = function() {
     this.trash.sort(function(a, b) {
+      if (a.mostRecent === undefined || a.mostRecent === null) { return 1; }
+      if (b.mostRecent === undefined || b.mostRecent === null) { return -1; }
       var at = a.mostRecent.getTime();
       var bt = b.mostRecent.getTime();
       if (at < bt) return -1;
@@ -96,8 +98,10 @@ var TrashModel = function(_lable, _cell, remarks) {
   this.dayLabel = result_text;
 
   this.getDateLabel = function() {
-    var result_text = this.mostRecent.getFullYear() + "/" + (1 + this.mostRecent.getMonth()) + "/" + this.mostRecent.getDate();
-    return this.getRemark() + this.dayLabel + " " + result_text;
+    var result_text = ( this.mostRecent === undefined || this.mostRecent === null )
+      ? ''
+      : " " + this.mostRecent.getFullYear() + "/" + (1 + this.mostRecent.getMonth()) + "/" + this.mostRecent.getDate();
+    return this.getRemark() + this.dayLabel + result_text;
   }
 
   var day_enum = ["日", "月", "火", "水", "木", "金", "土"];
@@ -132,7 +136,6 @@ var TrashModel = function(_lable, _cell, remarks) {
 */
   this.calcMostRect = function(areaObj) {
     var day_mix = this.dayCell;
-    var result_text = "";
     var day_list = new Array();
 
     // 定期回収の場合
@@ -188,19 +191,21 @@ var TrashModel = function(_lable, _cell, remarks) {
                 continue;
               }
             }
-
             day_list.push(d);
           }
         }
       }
     } else {
       // 不定期回収の場合は、そのまま指定された日付をセットする
-      for (var j in day_mix) {
-        var year = parseInt(day_mix[j].substr(0, 4));
-        var month = parseInt(day_mix[j].substr(4, 2)) - 1;
-        var day = parseInt(day_mix[j].substr(6, 2));
-        var d = new Date(year, month, day);
-        day_list.push(d);
+      if (Array.isArray(day_mix)) {
+        day_mix.forEach((v, i) => {
+          if (!v.match(/^\d{8}$/)) { return; }
+          var year = parseInt(day_mix[i].substr(0, 4));
+          var month = parseInt(day_mix[i].substr(4, 2)) - 1;
+          var day = parseInt(day_mix[i].substr(6, 2));
+          var d = new Date(year, month, day);
+          day_list.push(d);
+        });
       }
     }
     //曜日によっては日付順ではないので最終的にソートする。
@@ -216,7 +221,10 @@ var TrashModel = function(_lable, _cell, remarks) {
     var now = new Date();
 
     for (var i in day_list) {
-      if (this.mostRecent == null && now.getTime() < day_list[i].getTime() + 24 * 60 * 60 * 1000) {
+      if (
+        ( this.mostRecent === undefined || this.mostRecent === null )
+        && now.getTime() < day_list[i].getTime() + 24 * 60 * 60 * 1000
+      ) {
         this.mostRecent = day_list[i];
         break;
       }
@@ -546,17 +554,19 @@ $(function() {
           target_tag += "</ul>";
 
           var dateLabel = trash.getDateLabel();
-          //あと何日かを計算する処理です。
-          var leftDay = Math.ceil((trash.mostRecent.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+          // あと何日かを計算する処理
+          var leftDay = ( trash.mostRecent === undefined || trash.mostRecent === null )
+            ? null
+            : Math.ceil((trash.mostRecent.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
           var leftDayText = "";
-          if (leftDay == 0) {
+          if (leftDay === 0) {
             leftDayText = "今日";
-          } else if (leftDay == 1) {
+          } else if (leftDay === 1) {
             leftDayText = "明日";
-          } else if (leftDay == 2) {
+          } else if (leftDay === 2) {
             leftDayText = "明後日"
-          } else {
+          } else if (leftDay >= 3) {
             leftDayText = leftDay + "日後";
           }
 
