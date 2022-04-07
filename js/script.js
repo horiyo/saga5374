@@ -1,5 +1,7 @@
 "use strict";
 
+var DebugDate = '2022-12-29'
+
 /**
   エリア(ごみ処理の地域）を管理するクラスです。
 */
@@ -80,6 +82,9 @@ var TrashModel = function(_lable, _cell, remarks) {
   this.description;
   this.regularFlg = 1;      // 定期回収フラグ（デフォルトはオン:1）
 
+  // 佐賀県内の年末調整データの有無
+  this.sagaFlg = 0;
+
   var result_text = "";
   var today = new Date();
 
@@ -90,9 +95,14 @@ var TrashModel = function(_lable, _cell, remarks) {
       result_text += "第" + this.dayCell[j].charAt(1) + this.dayCell[j].charAt(0) + "曜日 ";
     } else if (this.dayCell[j].length == 2 && this.dayCell[j].substr(0,1) == "*") {
     } else {
-      // 不定期回収の場合（YYYYMMDD指定）
-      result_text = "不定期 ";
-      this.regularFlg = 0;  // 定期回収フラグオフ
+      if (this.dayCell.length > 1) {
+        result_text += "年末調整日"
+        this.sagaFlg = 1;
+      } else {
+        // 不定期回収の場合（YYYYMMDD指定）
+        result_text = "不定期 ";
+        this.regularFlg = 0;  // 定期回収フラグオフ
+      }
     }
   }
   this.dayLabel = result_text;
@@ -141,7 +151,8 @@ var TrashModel = function(_lable, _cell, remarks) {
     // 定期回収の場合
     if (this.regularFlg == 1) {
 
-      var today = new Date();
+      // var today = new Date();
+      var today = new Date(DebugDate);
 
       // 12月 +3月　を表現
       for (var i = 0; i < MaxMonth; i++) {
@@ -195,6 +206,18 @@ var TrashModel = function(_lable, _cell, remarks) {
           }
         }
       }
+      if (this.sagaFlg === 1) {
+        if (Array.isArray(day_mix)) {
+          day_mix.forEach((v, i) => {
+            if (!v.match(/^\d{8}$/)) { return; }
+            var year = parseInt(day_mix[i].substr(0, 4));
+            var month = parseInt(day_mix[i].substr(4, 2)) - 1;
+            var day = parseInt(day_mix[i].substr(6, 2));
+            var d = new Date(year, month, day);
+            day_list.push(d);
+          });
+        }
+      }
     } else {
       // 不定期回収の場合は、そのまま指定された日付をセットする
       if (Array.isArray(day_mix)) {
@@ -218,7 +241,8 @@ var TrashModel = function(_lable, _cell, remarks) {
       return 0;
     })
     //直近の日付を更新
-    var now = new Date();
+    // var now = new Date();
+    var now = new Date(DebugDate)
 
     for (var i in day_list) {
       if (
@@ -508,7 +532,10 @@ $(function() {
     var ableSVG = (window.SVGAngle !== void 0);
     //var ableSVG = false;  // SVG未使用の場合、descriptionの1項目目を使用
     var areaModel = areaModels[row_index];
-    var today = new Date();
+    // var today = new Date();
+    var today = new Date(DebugDate);
+
+    // today = new Date('2022-12-10')
     //直近の一番近い日付を計算します。
     areaModel.calcMostRect();
     //トラッシュの近い順にソートします。
