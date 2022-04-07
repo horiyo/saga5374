@@ -1,7 +1,5 @@
 "use strict";
 
-var DebugDate = '2022-12-29'
-
 /**
   エリア(ごみ処理の地域）を管理するクラスです。
 */
@@ -151,8 +149,7 @@ var TrashModel = function(_lable, _cell, remarks) {
     // 定期回収の場合
     if (this.regularFlg == 1) {
 
-      // var today = new Date();
-      var today = new Date(DebugDate);
+      var today = new Date();
 
       // 12月 +3月　を表現
       for (var i = 0; i < MaxMonth; i++) {
@@ -241,8 +238,7 @@ var TrashModel = function(_lable, _cell, remarks) {
       return 0;
     })
     //直近の日付を更新
-    // var now = new Date();
-    var now = new Date(DebugDate)
+    var now = new Date();
 
     for (var i in day_list) {
       if (
@@ -532,8 +528,7 @@ $(function() {
     var ableSVG = (window.SVGAngle !== void 0);
     //var ableSVG = false;  // SVG未使用の場合、descriptionの1項目目を使用
     var areaModel = areaModels[row_index];
-    // var today = new Date();
-    var today = new Date(DebugDate);
+    var today = new Date();
 
     // today = new Date('2022-12-10')
     //直近の一番近い日付を計算します。
