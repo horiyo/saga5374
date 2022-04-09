@@ -307,9 +307,9 @@ var TargetRowModel = function(data) {
  * ゴミ収集日に関する備考を管理するクラスです。
  * remarks.csvのモデルです。
  */
-var RemarkModel = function() {
-  this.id;
-  this.text;
+var RemarkModel = function(arg) {
+  this.id = arg[0];
+  this.text = arg[1];
 }
 
 /**
